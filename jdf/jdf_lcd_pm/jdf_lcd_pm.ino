@@ -1,4 +1,4 @@
-/* Copyright (c) Dyson Technology Ltd 2019. All rights reserved. 
+ /* Copyright (c) Dyson Technology Ltd 2019. All rights reserved. 
  *  Software for the James Dyson Foundation Air Quality Monitoring Kit
  *  A.T. Luisi, 11/2019
  *  Diagnostic Software and Manufacturing Test
@@ -19,6 +19,12 @@
 #include "Seeed_HM330X.h"
 #include "Adafruit_SGP30.h"
 #include "Adafruit_NeoPixel.h"
+
+
+// LCD screen libraries
+#include "rgb_lcd.h"
+ 
+
 
 // Defines
 #define DEBUG
@@ -53,6 +59,8 @@ HM330X pmSensor;
 Adafruit_SGP30 vocHumiditySensor;
 Adafruit_NeoPixel ledStrip_1(LED_STRIP_COUNT, LED_STRIP_1_PIN, NEO_GRB + NEO_KHZ800);
 Adafruit_NeoPixel ledStrip_2(LED_STRIP_COUNT, LED_STRIP_2_PIN, NEO_GRB + NEO_KHZ800);
+
+rgb_lcd lcd;
 
 typedef struct PMSensorReadings 
 {
@@ -178,7 +186,6 @@ void setup() {
 
   // Init the watchdog timer for a 4s timeout
   //wdt_enable(WDTO_4S);
-  
   //wdt_reset();
   
   #ifdef DEBUG
@@ -194,7 +201,7 @@ void setup() {
   ledStrip_1.fill(ledStrip_blue);
   ledStrip_1.show();
   // enough time to inspect ~2secs
-  delay(1000); // changed to 1 sec
+  delay(2000);
   // Turn off the strip for later
   ledStrip_1.clear();
   ledStrip_1.show();
@@ -208,7 +215,7 @@ void setup() {
   ledStrip_2.fill(ledStrip_blue);
   ledStrip_2.show();
   // enough time to inspect ~2secs
-  delay(1000); // changed to 1 sec
+  delay(2000);
   // Turn off the strip for later
   ledStrip_2.clear();
   ledStrip_2.show();
@@ -231,6 +238,43 @@ void setup() {
   // the sensor connection status
   checkSGP30IDWritten();
   determineSetupStateBeforeLoop();
+
+  lcd.begin(16, 2);
+  lcd.setRGB(255, 255, 255);
+  
+//  
+  Serial.println("TEST");
+//  Serial.setTimeout(5000);
+  
+//  Serial.println(Serial.readString().toInt());
+  Serial.setTimeout(1000);
+  String test = Serial.readString();
+  int s = test.toInt();
+ while (s != 199) {
+    
+    Serial.print(s);
+    Serial.print(" ");
+    Serial.print(test);
+  
+   Serial.println(" awaiting rpi");
+   while(Serial.available()==0){
+    
+   }
+   //delay(3000);
+   String test2 = Serial.readString();
+   Serial.print("_ARDUINO_WRITE_ ");
+   Serial.println(test2);
+   if(test2.toInt() == 199) {
+    break;
+   }
+//   delay(2000);
+  }
+
+  Serial.print("Done??");
+  
+  
+   Serial.println("successfully connected to raspberry pi");
+  
   
 }
 
@@ -573,7 +617,7 @@ void earlyOperationSGP30(uint16_t &co2Base, uint16_t &tvocBase)
   // Run for 12 hours 
   uint32_t startTime = millis();
   uint8_t hourCount = 0u;
-  bool elapsed1Hour = false;
+  bool elapsed1Hour = true;
 
   // Clear the LED strip
   ledStrip_1.clear();
@@ -587,26 +631,26 @@ void earlyOperationSGP30(uint16_t &co2Base, uint16_t &tvocBase)
   Serial.println("Running SGP30 Baseline Initialization");
   #endif 
 
-  while(hourCount < 10u)
-  {
-    while(!elapsed1Hour)
-    {
-      
-      // Check how much time has elapsed
-      uint32_t timeElapsed = (millis() - startTime);
-      if((timeElapsed >= (TIME_ELAPSED_HOURS_1_2 * 1000)))
-      {
-        // exit the inner loop
-        elapsed1Hour = true;
-      }
-    }
-    elapsed1Hour = false;
-    startTime = millis();
-    // Update the LED strip for every 1.2 hours elapsed
-    ledStrip_1.setPixelColor(hourCount, ledStrip_blue);
-    ledStrip_1.show();
-    hourCount++;
-  }
+//  while(hourCount < 10u)
+//  {
+//    while(!elapsed1Hour)
+//    {
+//      
+//      // Check how much time has elapsed
+//      uint32_t timeElapsed = (millis() - startTime);
+//      if((timeElapsed >= (TIME_ELAPSED_HOURS_1_2 * 1000)))
+//      {
+//        // exit the inner loop
+//        elapsed1Hour = true;
+//      }
+//    }
+//    elapsed1Hour = ;
+//    startTime = millis();
+//    // Update the LED strip for every 1.2 hours elapsed
+//    ledStrip_1.setPixelColor(hourCount, ledStrip_blue);
+//    ledStrip_1.show();
+//    hourCount++;
+//  }
 
   // 12 hours elapsed, now can get baseline values
   uint16_t *co2;
@@ -833,8 +877,6 @@ void loop() {
   u8 pmDataBuffer[H330X_DATA_BUFFER_SIZE];
   PMSensorReadings pmReadings;
 
-  
-
   // SGP30 Variables
   uint16_t tvocValue;
   uint16_t eCO2Value; // Needed?
@@ -873,6 +915,8 @@ void loop() {
 
   // Map the PM AQI values to the first LED strip
   aqi_pm = mapPMAQIValues(&pmReadings);
+  Serial.print("TEST: ");
+  Serial.println(aqi_pm);
 
   // Map the TVOC AQI values to the second LED strip
   aqi_tvoc = mapTVOCAQIValues(tvocValue);
@@ -882,13 +926,15 @@ void loop() {
   // Get the 'top' RGB color for the last LED
   hueTopColor = getTopHueColor(aqi_pm);
   #ifdef DEBUG
- 
+//  Serial.print("Hue Top Color (PM): ");
+//  Serial.println(hueTopColor);
   #endif 
 
   // Calculate the steps between the 'top' color and the base hue
   colorInterp = (hueValue / (LED_STRIP_COUNT - 1));
   #ifdef DEBUG
-  
+//  Serial.print("Color Interp: ");
+//  Serial.println(colorInterp);
   #endif
 
   // Yellow could do with some work...?
@@ -946,7 +992,7 @@ void loop() {
     #ifdef DEBUG
 //    Serial.print("Current LED hue: ");
 //    Serial.println(currentLEDHue);
-//    
+    
 //    Serial.print("RGB Color: ");
 //    Serial.println(rgbColor);
     #endif 
@@ -963,6 +1009,50 @@ void loop() {
     ledStrip_2.fill(0, (aqi_tvoc), (ledStrip_2.numPixels() - (aqi_tvoc)));
   }  
 
-  
+  lcd.clear();
+
+   lcd.setCursor(0, 0);
+   lcd.print("tVOC: ");
+   lcd.print(tvocValue);
+   
+   lcd.setCursor(0,1);
+   lcd.print("CO2eq: ");
+   lcd.print(eCO2Value);
+   Serial.print("_ARDUINO_WRITE_ ");
+   Serial.print("tVOC: " );
+   Serial.print(tvocValue);
+   Serial.print(" ");
+
+   Serial.print("CO2eq: ");
+   Serial.print(eCO2Value);
+    Serial.print(" ");
+//   Serial.println("ppm");
+
+   Serial.print("PM1.0CF: ");
+   Serial.print(pmReadings.pm1_0_cf1);
+   Serial.print(" ");
+   
+   Serial.print("PM2.5CF: ");
+   Serial.print(pmReadings.pm2_5_cf1);
+   Serial.print(" ");
+
+
+   Serial.print("PM10CF: " );
+   Serial.print(pmReadings.pm10_cf1);
+   Serial.print(" ");
+
+   Serial.print("PM1.0AE: ");
+   Serial.print(pmReadings.pm1_0_ae);
+   Serial.print(" ");
+
+   Serial.print("PM2.5AE: " );
+   Serial.print(pmReadings.pm2_5_ae);
+   Serial.print(" ");
+
+   Serial.print("PM10AE: ");
+   Serial.println(pmReadings.p10_a3);
+//   Serial.println();
+   
+  delay(500);
 
 }
