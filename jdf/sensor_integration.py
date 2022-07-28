@@ -15,6 +15,7 @@
 
 # Importing Libraries
 # from asyncio.windows_events import NULL
+from asyncore import write
 from fileinput import filename
 from genericpath import getctime
 from operator import and_
@@ -27,16 +28,25 @@ import serial.tools.list_ports
 from os.path import exists
 import math
 import sys
+import json
+import copy
+from time import sleep
+
+
+from setuptools import setup
 
 
 SENSOR_EEPROM_ID = 0
 SAMPLE_RATE = 10 # samples per minute
-AGGREGATION_LIMIT = 50 # number of samples to take a data point of for that specific data point
+AGGREGATION_LIMIT = 20 # number of samples to take a data point of for that specific data point
 ENABLED = True
 FINAL_READ = 0
 PORT_ID = '/dev/cu.usbmodem11101'
 RPI_CONNECTED = False;
 FILE_NAME = "SENSOR_DATA.txt"
+SERIAL_NUMBER = '1122334455667788' #nice
+global arduino
+
 global file_lines 
 
 
@@ -74,10 +84,10 @@ def arduino_set(message):
     arduino_write(Commands.set + message)
     return 1;
 
-# serial message will be: _WRITE_ _SET_ _SAMPLE_ (message) i.e write to the serial consle, set the sample as (message)
-def arduino_sample(message):
-    arduino_set(Commands.sample + message)
-    return 1;
+# # serial message will be: _WRITE_ _SET_ _SAMPLE_ (message) i.e write to the serial consle, set the sample as (message)
+# def arduino_sample(message):
+#     arduino_set(Commands.sample + message)
+#     return 1;
 
 # reads a full line from the arduino serial console 
 def arduino_read():
@@ -179,9 +189,33 @@ def aggregator(num_samples = AGGREGATION_LIMIT):
     print("AVERAGE READING IS: " + aggregated_reading.sensor_reading_to_string())
 
 
-
+# generates a serial number if it does not exist in the SENSOR_DATA.txt file 
 def serial_no_generator():
-    return 69
+    # return exec('cat /proc/cpuinfo | grep Serial | cut -d ' ' -f 2')
+    serial_no = -1
+    file_exists = exists(FILE_NAME)
+    if(file_exists): 
+        with open(FILE_NAME, "r") as file: 
+            data = file.readlines(); 
+            serial_no_line = data[1] # line that holds the serial number 
+            serial_no_index =  serial_no_line.find(':') + 2
+            serial_no = serial_no_line[serial_no_index:] 
+            print("Device Serial Number: " + serial_no)
+            file.close()
+    else :
+        serial_no = 12345678901234
+        print("Generated Serial Number: " + str(serial_no))
+      
+
+    
+
+    # serial_no = exec('cat /proc/cpuinfo | grep Serial | cut -d ' ' -f 2')
+    # print("serial number: " + serial_no)
+    # file_exists = exists(FILE_NAME)
+    
+
+    return serial_no
+
     
 
 # will check if a file exists on the raspi. if it doesnt, create hte file, then go down init route
@@ -202,43 +236,32 @@ def file_handler(sensor_status, sensor_reading):
         #   1. set activated to tue    
     else :
         f = open (FILE_NAME,"w")
-        serial_no = serial_no_generator()
+        # serial_no = serial_no_generator()
         f.write("Activated: "+ str(sensor_status)+ 
-            "\nSerial Number(16-digit): "+ str(serial_no) + 
+            "\nSerial Number(16-digit): "+ SERIAL_NUMBER + 
             "\nLast Reading: " + sensor_reading.time + "\n")
         f.write(sensor_reading.sensor_reading_to_string()+"\n")
         f.close()
 
     # The standard particulate matter mass concentration value refers to the mass concentration 
     # value obtained by density conversion of industrial metal particles as equivalent particles,
-    #  and is suitable for use in industrial production workshops and the like. 
+    # and is suitable for use in industrial production workshops and the like. 
     # The concentration of particulate matter in the atmospheric environment is converted by the 
     # density of the main pollutants in the air as equivalent particles, and is suitable for ordinary
-    #  indoor and outdoor atmospheric environments. So you can see that there are two sets of data above.
-    # {"sensor num: ","PM1.0 concentration(CF=1,Standard particulate matter,unit:ug/m3): ",
-    #                 "PM2.5 concentration(CF=1,Standard particulate matter,unit:ug/m3): ",
-    #                 "PM10 concentration(CF=1,Standard particulate matter,unit:ug/m3): ",
-    #                 "PM1.0 concentration(Atmospheric environment,unit:ug/m3): ",
-    #                 "PM2.5 concentration(Atmospheric environment,unit:ug/m3): ",
-    #                 "PM10 concentration(Atmospheric environment,unit:ug/m3): ",
-    #                 };
-
+    # indoor and outdoor atmospheric environments. So you can see that there are two sets of data below
 class SensorReading:
-    # VOC, CO2,
-    #  pm1.0cf, pm2.5cf, pm10cf, 
-  
     # spm = standard particulate matter 
     # aec = atmospheric environment concentration
     def __init__(self,time,voc,co2,spm1,spm25,spm10,aec1,aec25,aec10) :
         self.time = time
-        self.voc = str(voc)
-        self.co2 = str(co2)
-        self.spm1 = str(spm1)
-        self.spm25 = str(spm25)
-        self.spm10 = str(spm10)
-        self.aec1 = str(aec1)
-        self.aec25 = str(aec25)
-        self.aec10 = str(aec10)
+        self.voc = str(voc) # volitile organic compounds 
+        self.co2 = str(co2) # carbon dioxide 
+        self.spm1 = str(spm1) # PM1.0 concentration(CF=1,Standard particulate matter,unit:ug/m3)
+        self.spm25 = str(spm25) # PM2.5 concentration(CF=1,Standard particulate matter,unit:ug/m3)
+        self.spm10 = str(spm10) # PM10 concentration(CF=1,Standard particulate matter,unit:ug/m3)
+        self.aec1 = str(aec1) # PM1.0 concentration(Atmospheric environment,unit:ug/m3): 
+        self.aec25 = str(aec25) # PM2.5 concentration(Atmospheric environment,unit:ug/m3)
+        self.aec10 = str(aec10) # PM10 concentration(Atmospheric environment,unit:ug/m3)
 
     def sensor_reading_to_string(self):
         return("Time: "   + self.time +
@@ -253,37 +276,78 @@ class SensorReading:
 
     def set_sensor_time(self, new_time) :
         self.time = new_time
-    
+
+    # dumps aggregated sensor reading in the correct json format for the backend API. 
+    def sensor_json(self) :
+        with open("data_file.json", "w") as write_file:
+            # self_dictionary = self.__dict__
+            
+            self_dictionary = copy.deepcopy(self.__dict__)
+            self_dictionary.update({"serial_number": SERIAL_NUMBER})
+            json_dict = {
+            "time": self_dictionary["time"],
+            "voc": int(self_dictionary["voc"]),
+            "co2": int(self_dictionary["co2"]),
+            "spm1_0": int(self_dictionary["spm1"]),
+            "spm2_5": int(self_dictionary["spm25"]),
+            "spm10": int(self_dictionary["spm10"]),
+            "aec1_0": int(self_dictionary["aec1"]),
+            "aec2_5": int(self_dictionary["aec25"]),
+            "aec10": int(self_dictionary["aec10"]),
+            "serial_number": int(self_dictionary["serial_number"])}
+            print(json_dict)
+            json.dump(json_dict, write_file)
+            print("json has been dumped")
+            write_file.close()
+   
 def arduino_connection(port_id=PORT_ID, rpi_connected = RPI_CONNECTED):
     #idk
     global arduino
     # if not rpi_connected
     arduino = serial.Serial(port_id, baudrate=115200, timeout=.1)
+    sleep(2)
+    if arduino.is_open:
+
+        arduino.write(bytes(SERIAL_NUMBER, 'utf-8'))
+        
     
-    while not rpi_connected:
-        value = arduino_read().decode()
-        valid = "successfully connected"
-        waiting = "awaiting"
-        if(len(value) > 0):
-            # print("python: " + value + "\n")
-            if(arduino.is_open and value != "\n"):
-                print(value)
-                if waiting in value:
-                    print("beginning aggregation automatically.\n")
-                    num = '199'
-                    # value = write_read(num)
-                    time.sleep(.1)
-                    arduino.write(bytes(num, 'utf-8'))
-                    time.sleep(1)
-                elif valid in value:
-                    print("_RPI_WRITE_" + value + " COMPLETE \n")
-                    # print("finally")
-                    rpi_connected = True  
-                    return rpi_connected   
-def main():
-    print('starting main')
+    # rpi_connected = True 
+    # RPI_CONNECTED = rpi_connected 
+
+    # # return 
+    # while not rpi_connected:
+    #     value = arduino_read().decode()
+    #     valid = "successfully connected"
+    #     waiting = "awaiting"
+    #     # arduino.write(bytes('world hello', 'utf-8'))
+    #     if(len(value) > 0):
+    #         # print("python: " + value + "\n")
+    #             if waiting in value:
+                    
+    #                 num = SERIAL_NUMBER
+    #                 # num = '1'
+    #                 # value = write_read(num)
+    #                 time.sleep(.1)
+    #                 arduino.write(bytes(num, 'utf-8'))
+    #                 print("beginning aggregation automatically.\n")
+    #                 time.sleep(.05)
+    #             elif valid in value:
+    #                 print("_RPI_RECIEVED_ " + value + " COMPLETE \n")
+    #                 # print("finally")
+    #                 rpi_connected = True 
+    #                 RPI_CONNECTED = rpi_connected 
+    #                 return rpi_connected   
+
+def main(continual_mode=False) :
+    print('Beginning Connection...')
+    SERIAL_NUMBER = serial_no_generator()
+    if not RPI_CONNECTED:
+        arduino_connection()
     
-    RPI_CONNECTED = arduino_connection()
+    
+
+    if(continual_mode) :
+        print("in continual mode")
     # find_arduino_port();
     # arduino_connection
 
@@ -296,55 +360,68 @@ def main():
     #     print(data) # printing the value
 
    #todo: 
-   # do aggregation example. real. 
+   # do aggregation example.
    # setup the file writing stuff
    # setup the process to turn on arduino when need be and turn it off when unnecessary 
 
 # PROCESS: BEGIN DATA RETRIEVAL 
-
-    setup_num_sensor_readings = 50
+    
+    setup_num_sensor_readings = 40 if continual_mode else 40
+    print("num buffered sensor readings: " +  str(setup_num_sensor_readings))
+    # setup_num_sensor_readings = 40
     actual_readings = 0
     global sensor_readings
     sensor_readings=[] 
     aggregated = False
-    while True and not aggregated: 
+    
+    while True and not aggregated : 
         value = arduino_read().decode()
+        # print("recieveD: " + value)
         if len(value) > 0 and value != '\n':
             if '_ARDUINO_WRITE_' in value :
-                setup_num_sensor_readings-=1
-                if(setup_num_sensor_readings < 0):
+                setup_num_sensor_readings -= 1
+                if(setup_num_sensor_readings < 0 ):
                     actual_readings +=1
                     s = parser(value)
                     add_reading(s);
                     if (actual_readings == AGGREGATION_LIMIT): 
                         ag_sensor_reading = aggregator()
                         aggregated = True
-            else :
-                print(value)
+            # else :
+                # print("Calibration..")
                 
                 # print(s.sensor_reading_to_string())
     print("aggregation complete. Values: " + ag_sensor_reading.sensor_reading_to_string())
+    ag_sensor_reading.sensor_json()
     file_handler(False, ag_sensor_reading)
-    arduino.close()
-    # quit()
 
+    if(continual_mode == True) :
+        sleep_time = 5
+        print("sleeping in continual mode for " + str(sleep_time)  + " second(s)" )
+        # command = "_RPI_WRITE_ _SLEEP_ " + str(sleep_time * 1000) 
+        # arduino.write(bytes(command, 'utf-8'))
+        aggregated = False
         
-             
-        
-    # sys.exit()
+        # arduino.send_break(10000)
+        # sleep(10)
+        return 1
+        exit()
+        # sleep(3)
+        # main()
+        # main(continual_mode=True)
+    if(continual_mode == False) :
+        print("we are at the end of a iteration of non-continual mode")
+        # exit() 
+        # quit()
+   
     
+    
+
+    # quit()
+    # sys.exit()
+
     return 0
 
-
-
-
-    
-def __init__(none):
-    cwd = os.getcwd()
-    print("Current working directory: {0}".format(cwd))
-
-    if(arduino_initalizer()): 
-        return 0
     
     # Import the os module
 
@@ -358,6 +435,6 @@ def __init__(none):
 # print("os.getcwd() returns an object of type: {0}".format(type(cwd)))
     
 
-main()
+# main()
 
 

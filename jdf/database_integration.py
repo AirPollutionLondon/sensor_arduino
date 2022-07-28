@@ -1,23 +1,34 @@
 # create a string that has [sensorID, Latitude, Longitude, VOC(ppb), CO2(ppm)]
 
-# import pymongo
+from time import sleep
 import sensor_integration
 import os
+import requests
+import json
 
-# myclient = pymongo.MongoClient("mongodb://localhost:27017/")
-# mydb = myclient["mydatabase"]
-# mycol = mydb["customers"]
+#should be run right after a reading is made (assumes that the method to create a json from a reading has been run)
+def post_json():
 
-# mydict = { "name": "John", "address": "Highway 37" }
+    url='http://localhost:8080/api/sensorreading/upload'
+    json_data=open('data_file.json')
+    data=json.load(json_data)
+    print(data)
+    x=requests.post(url, json=data) # the actual post request
+    print("json posted")
 
-# x = mycol.insert_one(mydict)
+post_json()
+# sensor_integration.main(False)
+# sensor_integration.main(True)
+# print("waiting 10 secs before we do another read")
+# sleep(10)
+# sensor_integration.main(True)
 
-for x in range(10):
-    try: 
-        sensor_integration.main();
-    except SystemExit:
-        print("in here")
-        x+=1
+# for x in range(10):
+#     try: 
+#         sensor_integration.main(True);
+#     except SystemExit:
+#         print("in here")
+#         x+=1
 
 
 

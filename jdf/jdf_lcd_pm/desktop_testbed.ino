@@ -55,6 +55,8 @@
 #define SGP_DEVICE_EEPROM_END_ADDR            0x0Au
 
 int delay_time = 0;
+bool alternate = true;
+int repeat_reading = 0;
 
 // Global Variable declarations
 HM330X pmSensor;
@@ -185,10 +187,30 @@ void setup() {
   // put your setup code here, to run once:
   // Output to the serial terminal
   Serial.begin(115200);
+  Serial.setTimeout(1);
+//  delay(1000);
+   String test ;
+  while(Serial.available()){
+//    
+    }
+    delay(1000);
+   test = Serial.readString();
+  
+  
+  lcd.begin(16, 2);
+  lcd.setRGB(255, 255, 255);
+
+   lcd.setCursor(0, 0);
+   lcd.print("Serial Number: ");
+//   lcd.print(69);
+   
+   lcd.setCursor(0,1);
+   lcd.print(test);
 
   // Init the watchdog timer for a 4s timeout
   //wdt_enable(WDTO_4S);
   //wdt_reset();
+  
   
   #ifdef DEBUG
   Serial.println("Initializing LED Strip...");
@@ -249,8 +271,7 @@ void setup() {
 //  Serial.setTimeout(5000);
   
 //  Serial.println(Serial.readString().toInt());
-  Serial.setTimeout(1);
-//  String test = Serial.readString();
+ 
 //  int s = test.toInt();
 // while (true) {
     
@@ -261,7 +282,7 @@ void setup() {
    
 //String test2 = Serial.readString();
 //    Serial.println("TEST; ");
-//   Serial.println(test2);
+//   Serial.println(test);
 //
 //   while(!Serial.available()){
 //    Serial.println("awaiting rpi");
@@ -658,7 +679,7 @@ void earlyOperationSGP30(uint16_t &co2Base, uint16_t &tvocBase)
   uint8_t hourCount = 0u;
   bool elapsed1Hour = true;
 
-  // Clear the LED strip
+  // Clear the sLED strip
   ledStrip_1.clear();
   ledStrip_1.show();
 
@@ -1061,8 +1082,8 @@ void loop() {
     ledStrip_2.fill(0, (aqi_tvoc), (ledStrip_2.numPixels() - (aqi_tvoc)));
   }  
 
-  lcd.clear();
-
+   lcd.clear();
+   if(repeat_reading < 5 || repeat_reading > 10 ) {
    lcd.setCursor(0, 0);
    lcd.print("tVOC: ");
    lcd.print(tvocValue);
@@ -1070,19 +1091,45 @@ void loop() {
    lcd.setCursor(0,1);
    lcd.print("CO2eq: ");
    lcd.print(eCO2Value);
+//   alternate = !alternate;
+   repeat_reading++;
+   
+    
+   } else if(repeat_reading >= 5 && repeat_reading < 10){
+  
+    lcd.setCursor(0, 0);
+   lcd.print("PM1: ");
+   lcd.print(pmReadings.pm1_0_cf1);
+   
+   lcd.setCursor(0,1);
+   lcd.print("PM2.5: ");
+   lcd.print(pmReadings.pm2_5_cf1);
+   repeat_reading++;
+   
+   } else {
+    repeat_reading = 0;
+   lcd.setCursor(0, 0);
+   lcd.print("tVOC: ");
+   lcd.print(tvocValue);
+   
+   lcd.setCursor(0,1);
+   lcd.print("CO2eq: ");
+   lcd.print(eCO2Value);
+   }
+   
    
 //   if(delay_time != 0)  {
 //    delay(delay_time); 
 
 
-      Serial.print("_ARDUINO_WRITE_ ");
+   Serial.print("_ARDUINO_WRITE_ ");
    Serial.print("tVOC: " );
    Serial.print(tvocValue);
    Serial.print(" ");
 
    Serial.print("CO2eq: ");
    Serial.print(eCO2Value);
-    Serial.print(" ");
+   Serial.print(" ");
 //   Serial.println("ppm");
 
    Serial.print("PM1.0CF: ");
