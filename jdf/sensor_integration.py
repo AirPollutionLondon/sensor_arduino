@@ -192,7 +192,10 @@ def serial_no_generator():
             file.close()
     else :
         try :
-            serial_no = str(exec('cat /proc/cpuinfo | grep Serial | cut -d ' ' -f 2'))
+            stream = os.popen("cat /proc/cpuinfo | grep Serial | cut -d ' ' -f 2")
+            output = stream.read()
+            new_line_index = output.find('\n') 
+            serial_no = output[:new_line_index]
             print("Rpi Serial Number ")
         except: 
             characters = string.digits  + string.ascii_lowercase
