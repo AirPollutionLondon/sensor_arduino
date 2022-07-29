@@ -59,13 +59,15 @@ class Commands(Enum) :
 def find_arduino_port():
     ports = list(serial.tools.list_ports.comports())
     for p in ports:
-        print("test: "+ p.device)
+        print("device: "+ p.device)
+        print("description: " + p.description)
         if "Arduino" in p.description:
            
             print("This is an Arduino!")
+            return p.description
         #print(p)
     # print("LOG: arduino connection successful")
-    return arduino
+    # return arduino
    
 def arduino_write(message):
     combined_msg = Commands.write + message
@@ -334,11 +336,14 @@ def arduino_connection(port_id=PORT_ID, rpi_connected = RPI_CONNECTED):
     #                 return rpi_connected   
 
 def main(continual_mode=False) :
+
     print('Beginning Connection...')
+
     global SERIAL_NUMBER
-    SERIAL_NUMBER = serial_no_generator()
+    SERIAL_NUMBER = serial_no_generator() #generate serial number 
+
     if not RPI_CONNECTED:
-        arduino_connection()
+        arduino_connection() # form connection to arduino
     if(continual_mode) :
         print("in continual mode")
     # find_arduino_port();
@@ -369,15 +374,15 @@ def main(continual_mode=False) :
                         aggregated = True
             
     print("aggregation complete. Values: " + ag_sensor_reading.sensor_reading_to_string())
+    # write json 
     ag_sensor_reading.sensor_json()
+    # writes sensor reading to file 
     file_handler(False, ag_sensor_reading)
 
     if(continual_mode == True) :
-        sleep_time = 5
-        print("sleeping in continual mode for " + str(sleep_time)  + " second(s)" )
-       
-        aggregated = False
-        
+        # sleep_time = 5
+        # print("sleeping in continual mode for " + str(sleep_time)  + " second(s)" )
+        aggregated = False 
         return 1
         exit()
         # sleep(3)
@@ -385,7 +390,7 @@ def main(continual_mode=False) :
         # main(continual_mode=True)
     if(continual_mode == False) :
         print("we are at the end of a iteration of non-continual mode")
-        # exit() 
+        exit() 
         # quit()
    
     
