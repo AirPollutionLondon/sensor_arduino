@@ -58,9 +58,13 @@ class Commands(Enum) :
 
 def find_arduino_port():
     ports = list(serial.tools.list_ports.comports())
+    print(ports);
     for p in ports:
         print("device: "+ p.device)
         print("description: " + p.description)
+        # print("product: " + p.product)
+        # print("description: " + p.interface)
+        # print()
         if "Arduino" in p.description:
            
             print("This is an Arduino!")
