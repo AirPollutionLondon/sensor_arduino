@@ -40,9 +40,10 @@ from setuptools import setup
 AGGREGATION_LIMIT = 20 # number of samples to take a data point of for that specific data point
 ENABLED = True
 FINAL_READ = 0
-PORT_ID = '/dev/cu.usbmodem11101'
+DEV_MODE = False
+PORT_ID = '/dev/cu.usbmodem11101' if DEV_MODE else '/dev/tty/ACM0' 
 RPI_CONNECTED = False;
-FILE_NAME = "SENSOR_DATA5.txt"
+FILE_NAME = "SENSOR_DATA.txt"
 # SERIAL_NUMBER = '1122334455667788' #nice
 global arduino
 global file_lines 
@@ -112,15 +113,6 @@ def sensor_sample_config(rate):
     value = "SET _SAMPLE_" + rate 
     arduino.write(int(rate,'utf-8'))
     return 0;
-
-
-# this will initialize the process of retrieving a sensorID from the database if it does not have one.
-def arduino_initalizer():
-    SENSOR_EEPROM_ID = read_eeprom_id();
-    if(SENSOR_EEPROM_ID == 0 or SENSOR_EEPROM_ID == NULL) :
-        return 0
-    else :
-        return SENSOR_EEPROM_ID
 
 # will get one serialized line. 
 # def get_line():
