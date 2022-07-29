@@ -196,7 +196,7 @@ def serial_no_generator():
             output = stream.read()
             new_line_index = output.find('\n') 
             serial_no = output[:new_line_index]
-            print("Rpi Serial Number ")
+            print("Rpi Serial Number " + serial_no)
         except: 
             characters = string.digits  + string.ascii_lowercase
             serial_no = ''.join(random.choice(characters) for i in range(16))
