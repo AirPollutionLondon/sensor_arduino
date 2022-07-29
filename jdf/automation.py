@@ -4,24 +4,17 @@
 from time import sleep
 import sensor_integration
 import os
+h = .005
+m = 60
+s = 60
 
-# myclient = pymongo.MongoClient("mongodb://localhost:27017/")
-# mydb = myclient["mydatabase"]
-# mycol = mydb["customers"]
+# sleep(100)
+print("Launching Process...")
+print("Performing sensor readings every 12 hours")
+while(True):
+    sensor_integration.main(True)
+    sleep(h*m*s)
 
-# mydict = { "name": "John", "address": "Highway 37" }
-
-# x = mycol.insert_one(mydict)
-
-# for x in range(10):
-#     try: 
-#         sensor_integration.main(True);
-#     except SystemExit:
-#         print("in here")
-#         # sensor_integration.main(True)
-#         x+=1
-
-sensor_integration.main(True)
 print("sleeping")
 sleep(2)
 sensor_integration.main(True)

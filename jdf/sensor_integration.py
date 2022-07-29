@@ -19,38 +19,33 @@ from asyncore import write
 from fileinput import filename
 from genericpath import getctime
 from operator import and_
+from datetime import datetime, date
+from enum import Enum
+from re import S
+from os.path import exists
+from time import sleep
 import serial
 import time
 import os # imported to get the working directory 
-from datetime import datetime, date
-from enum import Enum
 import serial.tools.list_ports
-from os.path import exists
 import math
 import sys
 import json
 import copy
-from time import sleep
-
+import random
+import string
 
 from setuptools import setup
 
-
-SENSOR_EEPROM_ID = 0
-SAMPLE_RATE = 10 # samples per minute
 AGGREGATION_LIMIT = 20 # number of samples to take a data point of for that specific data point
 ENABLED = True
 FINAL_READ = 0
 PORT_ID = '/dev/cu.usbmodem11101'
 RPI_CONNECTED = False;
-FILE_NAME = "SENSOR_DATA.txt"
-SERIAL_NUMBER = '1122334455667788' #nice
+FILE_NAME = "SENSOR_DATA5.txt"
+# SERIAL_NUMBER = '1122334455667788' #nice
 global arduino
-
 global file_lines 
-
-
-
 
 class Commands(Enum) :
     read = '_READ_'
@@ -60,7 +55,6 @@ class Commands(Enum) :
     rpi_send = '_RPI_SEND_'
     rpi_write = '_RPI_WRITE_'
     arduino_write = '_ARDUINO_WRITE_'
-
 
 def find_arduino_port():
     ports = list(serial.tools.list_ports.comports())
@@ -113,12 +107,6 @@ def sensor_sample_config(rate):
     arduino.write(int(rate,'utf-8'))
     return 0;
 
-# gets the eeprom_id from the serial line
-def read_eeprom_id():
-    current_line = arduino.read_all()
-    if "SET _SENSORID_" in current_line :
-       index = current_line.index("SENSORID ")
-       SENSOR_EEPROM_ID = current_line[index:]
 
 # this will initialize the process of retrieving a sensorID from the database if it does not have one.
 def arduino_initalizer():
@@ -183,11 +171,9 @@ def aggregator(num_samples = AGGREGATION_LIMIT):
                             math.ceil(sum_aec1/num_samples),
                             math.ceil(sum_aec25/num_samples),
                             math.ceil(sum_aec10/num_samples))
+                            
     return aggregated_reading
-        
-    print("sampled: " + num_samples + " times") 
-    print("AVERAGE READING IS: " + aggregated_reading.sensor_reading_to_string())
-
+    
 
 # generates a serial number if it does not exist in the SENSOR_DATA.txt file 
 def serial_no_generator():
@@ -199,12 +185,22 @@ def serial_no_generator():
             data = file.readlines(); 
             serial_no_line = data[1] # line that holds the serial number 
             serial_no_index =  serial_no_line.find(':') + 2
-            serial_no = serial_no_line[serial_no_index:] 
+            new_line = serial_no_line.find('\n')
+            if new_line > -1 :
+                serial_no = serial_no_line[serial_no_index:new_line]
+            else: 
+                serial_no = serial_no_line[serial_no_index:] 
             print("Device Serial Number: " + serial_no)
             file.close()
     else :
-        serial_no = 12345678901234
-        print("Generated Serial Number: " + str(serial_no))
+        try :
+            serial_no = str(exec('cat /proc/cpuinfo | grep Serial | cut -d ' ' -f 2'))
+            print("Rpi Serial Number ")
+        except: 
+            characters = string.digits  + string.ascii_lowercase
+            serial_no = ''.join(random.choice(characters) for i in range(16))
+            # serial_no = 12345678901234
+            print("Generated Serial Number: " + str(serial_no))
       
 
     
@@ -236,7 +232,6 @@ def file_handler(sensor_status, sensor_reading):
         #   1. set activated to tue    
     else :
         f = open (FILE_NAME,"w")
-        # serial_no = serial_no_generator()
         f.write("Activated: "+ str(sensor_status)+ 
             "\nSerial Number(16-digit): "+ SERIAL_NUMBER + 
             "\nLast Reading: " + sensor_reading.time + "\n")
@@ -294,7 +289,7 @@ class SensorReading:
             "aec1_0": int(self_dictionary["aec1"]),
             "aec2_5": int(self_dictionary["aec25"]),
             "aec10": int(self_dictionary["aec10"]),
-            "serial_number": int(self_dictionary["serial_number"])}
+            "serial_number": self_dictionary["serial_number"]}
             print(json_dict)
             json.dump(json_dict, write_file)
             print("json has been dumped")
@@ -340,29 +335,14 @@ def arduino_connection(port_id=PORT_ID, rpi_connected = RPI_CONNECTED):
 
 def main(continual_mode=False) :
     print('Beginning Connection...')
+    global SERIAL_NUMBER
     SERIAL_NUMBER = serial_no_generator()
     if not RPI_CONNECTED:
         arduino_connection()
-    
-    
-
     if(continual_mode) :
         print("in continual mode")
     # find_arduino_port();
     # arduino_connection
-
-    # while True:
-    #     # num = input("Enter a number: ") # Taking input from user
-    #     # value = write_read('199')
-    #     # bytes("TEST WRITe")
-    #     arduino.write(bytes("TEST WRITE", 'utf-8'))
-    #     data = arduino.readline()
-    #     print(data) # printing the value
-
-   #todo: 
-   # do aggregation example.
-   # setup the file writing stuff
-   # setup the process to turn on arduino when need be and turn it off when unnecessary 
 
 # PROCESS: BEGIN DATA RETRIEVAL 
     
@@ -387,10 +367,7 @@ def main(continual_mode=False) :
                     if (actual_readings == AGGREGATION_LIMIT): 
                         ag_sensor_reading = aggregator()
                         aggregated = True
-            # else :
-                # print("Calibration..")
-                
-                # print(s.sensor_reading_to_string())
+            
     print("aggregation complete. Values: " + ag_sensor_reading.sensor_reading_to_string())
     ag_sensor_reading.sensor_json()
     file_handler(False, ag_sensor_reading)
@@ -398,12 +375,9 @@ def main(continual_mode=False) :
     if(continual_mode == True) :
         sleep_time = 5
         print("sleeping in continual mode for " + str(sleep_time)  + " second(s)" )
-        # command = "_RPI_WRITE_ _SLEEP_ " + str(sleep_time * 1000) 
-        # arduino.write(bytes(command, 'utf-8'))
+       
         aggregated = False
         
-        # arduino.send_break(10000)
-        # sleep(10)
         return 1
         exit()
         # sleep(3)
@@ -422,19 +396,6 @@ def main(continual_mode=False) :
 
     return 0
 
-    
-    # Import the os module
 
-# Get the current working directory
-
-
-# Print the current working directory
-
-
-# Print the type of the returned object
-# print("os.getcwd() returns an object of type: {0}".format(type(cwd)))
-    
-
-# main()
 
 

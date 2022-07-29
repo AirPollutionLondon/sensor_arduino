@@ -8,7 +8,6 @@ import json
 
 #should be run right after a reading is made (assumes that the method to create a json from a reading has been run)
 def post_json():
-
     url='http://localhost:8080/api/sensorreading/upload'
     json_data=open('data_file.json')
     data=json.load(json_data)
@@ -17,18 +16,6 @@ def post_json():
     print("json posted")
 
 post_json()
-# sensor_integration.main(False)
-# sensor_integration.main(True)
-# print("waiting 10 secs before we do another read")
-# sleep(10)
-# sensor_integration.main(True)
-
-# for x in range(10):
-#     try: 
-#         sensor_integration.main(True);
-#     except SystemExit:
-#         print("in here")
-#         x+=1
 
 
 
