@@ -1,7 +1,7 @@
- /* Copyright (c) Dyson Technology Ltd 2019. All rights reserved. 
- *  Software for the James Dyson Foundation Air Quality Monitoring Kit
- *  A.T. Luisi, 11/2019
- *  Diagnostic Software and Manufacturing Test
+ /* Air Pollution Arduino Code
+ *  Written by Meghna Gite, Yuhong Zhao, Declan Lowney and Benoni Vainqueur  
+ *  Sensor and LED integrations obtained from software for the James Dyson
+ *  Foundation Air Quality Monitoring Kit A.T. Luisi, 11/2019
  */
 
 // Arduino Level Includes
@@ -20,12 +20,9 @@
 #include "Adafruit_SGP30.h"
 #include "Adafruit_NeoPixel.h"
 
-
 // LCD screen libraries
 #include "rgb_lcd.h"
  
-
-
 // Defines
 #define DEBUG
 
@@ -54,7 +51,10 @@
 #define SGP_DEVICE_EEPROM_START_ADDR          0x05u
 #define SGP_DEVICE_EEPROM_END_ADDR            0x0Au
 
+// delay times, and alternating accumulator
 int delay_time = 0;
+bool alternate = true;
+int repeat_reading = 0;
 
 // Global Variable declarations
 HM330X pmSensor;
@@ -182,13 +182,32 @@ void initSGP30()
 
 
 void setup() {
-  // put your setup code here, to run once:
   // Output to the serial terminal
   Serial.begin(115200);
+  Serial.setTimeout(1);
+
+   String test ;
+  while(Serial.available()){
+  
+    }
+    delay(1000);
+   serial_no = Serial.readString();
+  
+  
+  lcd.begin(16, 2);
+  lcd.setRGB(255, 255, 255);
+
+   lcd.setCursor(0, 0);
+   lcd.print("Serial Number: ");
+//   lcd.print(69);
+   
+   lcd.setCursor(0,1);
+   lcd.print(serial_no);
 
   // Init the watchdog timer for a 4s timeout
   //wdt_enable(WDTO_4S);
   //wdt_reset();
+  
   
   #ifdef DEBUG
   Serial.println("Initializing LED Strip...");
@@ -243,79 +262,21 @@ void setup() {
 
   lcd.begin(16, 2);
   lcd.setRGB(255, 255, 255);
-  
-//
-//  Serial.println("TEST");
-//  Serial.setTimeout(5000);
-  
-//  Serial.println(Serial.readString().toInt());
-  Serial.setTimeout(1);
-//  String test = Serial.readString();
-//  int s = test.toInt();
-// while (true) {
-    
-//    Serial.print(s);
-//    Serial.print(" ");
-//    Serial.print(test);
 
-   
-//String test2 = Serial.readString();
-//    Serial.println("TEST; ");
-//   Serial.println(test2);
-//
-//   while(!Serial.available()){
-//    Serial.println("awaiting rpi");
-//    
-//   
-//   //delay(3000);
-//   String test2 = Serial.readString();
-////    Serial.println("TEST; ");
-//   Serial.println(test2);
-//    int contains = test2.indexOf("1");
-//    Serial.println("CHECKING FOR CONTINUAL MODE");
-//     if (contains > 0) { 
-//      Serial.println("IN HERE");
-//      
-//      int len = test2.length();
-//      String sleep_time = test2.substring(contains, len - 1);
-//      Serial.println("SETTING SLEEP TIME FOR " + sleep_time + " SECONDS");
-////      delay(sleep_time.toInt());
-//      delay_time = sleep_time.toInt() * 1000;
-//       Serial.println("successfully connected to raspberry pi");
-//        break;
-//
-////      
-////   Serial.print("_ARDUINO_WRITE_ ");
-////   Serial.println(test2);
-////   if(test2.toInt() == 5) {
-////    delay_time = test2.toInt() * 1000;
-//////    delay(test2.toInt()*1000);
-////    break;
-////    
-//   }
-//   }
-   
-//   delay(2000);
-//  }
-//    Serial.print("DELAY TIME: ");
-//    Serial.println(delay_time);
-  
-  
-  
 }
 
-   //    if (Serial.available()) {
-//          String continual_mode = Serial.readString();
-//     int contains = continual_mode.indexOf("_SLEEP_");
-//     Serial.println("CHECKING FOR CONTINUAL MODE");
-//     if (contains > 0) { 
-//      int len = continual_mode.length();
-//      String sleep_time = continual_mode.substring(contains, len - 1);
-//      Serial.println("SLEEPING FOR " + sleep_time + " SECONDS");
-//      delay(sleep_time.toInt());
-//     }
-// 
-//    }
+    if (Serial.available()) {
+        String continual_mode = Serial.readString();
+    int contains = continual_mode.indexOf("_SLEEP_");
+    Serial.println("CHECKING FOR CONTINUAL MODE");
+    if (contains > 0) { 
+     int len = continual_mode.length();
+     String sleep_time = continual_mode.substring(contains, len - 1);
+     Serial.println("SLEEPING FOR " + sleep_time + " SECONDS");
+     delay(sleep_time.toInt());
+    }
+
+   }
 
 // Clears the EEPROM region in use and sets to 0
 void clearEEPROMRegion()
@@ -658,7 +619,7 @@ void earlyOperationSGP30(uint16_t &co2Base, uint16_t &tvocBase)
   uint8_t hourCount = 0u;
   bool elapsed1Hour = true;
 
-  // Clear the LED strip
+  // Clear the sLED strip
   ledStrip_1.clear();
   ledStrip_1.show();
 
@@ -912,19 +873,19 @@ uint8_t mapTVOCAQIValues(uint16_t tvocIn)
 }
 
 void loop() {
+  // INITIALIZATION PROCESS
+   if (Serial.available()) {
+         String continual_mode = Serial.readString();
+    int contains = continual_mode.indexOf("_SLEEP_");
+    Serial.println("CHECKING FOR CONTINUAL MODE");
+    if (contains > 0) { 
+     int len = continual_mode.length();
+     String sleep_time = continual_mode.substring(contains, len - 1);
+     Serial.println("SLEEPING FOR " + sleep_time + " SECONDS");
+     delay(sleep_time.toInt());
+    }
 
-//    if (Serial.available()) {
-//          String continual_mode = Serial.readString();
-//     int contains = continual_mode.indexOf("_SLEEP_");
-//     Serial.println("CHECKING FOR CONTINUAL MODE");
-//     if (contains > 0) { 
-//      int len = continual_mode.length();
-//      String sleep_time = continual_mode.substring(contains, len - 1);
-//      Serial.println("SLEEPING FOR " + sleep_time + " SECONDS");
-//      delay(sleep_time.toInt());
-//     }
-// 
-//    }
+   }
   // PM Sensor Variables
   u8 pmDataBuffer[H330X_DATA_BUFFER_SIZE];
   PMSensorReadings pmReadings;
@@ -943,7 +904,6 @@ void loop() {
   uint8_t val = 70u; // As above
 
   // Check if the PM sensor is connected
-
   // Read from the PM sensor
   if(pmSensor.read_sensor_value(pmDataBuffer, (H330X_DATA_BUFFER_SIZE - 1)))
   {
@@ -967,9 +927,6 @@ void loop() {
 
   // Map the PM AQI values to the first LED strip
   aqi_pm = mapPMAQIValues(&pmReadings);
-//  Serial.print("TEST: ");
-//  Serial.println(aqi_pm);
-
   // Map the TVOC AQI values to the second LED strip
   aqi_tvoc = mapTVOCAQIValues(tvocValue);
 
@@ -977,19 +934,9 @@ void loop() {
   // For the PM reading first:
   // Get the 'top' RGB color for the last LED
   hueTopColor = getTopHueColor(aqi_pm);
-  #ifdef DEBUG
-//  Serial.print("Hue Top Color (PM): ");
-//  Serial.println(hueTopColor);
-  #endif 
-
   // Calculate the steps between the 'top' color and the base hue
   colorInterp = (hueValue / (LED_STRIP_COUNT - 1));
-  #ifdef DEBUG
-//  Serial.print("Color Interp: ");
-//  Serial.println(colorInterp);
-  #endif
 
-  // Yellow could do with some work...?
 
   // Index from 1 to put at least one LED on and prevent user concern
   // Note that this has the effect of artificially increasing the AQI value by 1
@@ -999,14 +946,6 @@ void loop() {
     // Get the current color values
     uint16_t currentLEDHue = hueValue - (colorInterp * i);
     uint32_t rgbColor = ledStrip_1.gamma32(ledStrip_1.ColorHSV(currentLEDHue));
-    #ifdef DEBUG
-//    Serial.print("Current LED hue: ");
-//    Serial.println(currentLEDHue);
-    
-//    Serial.print("RGB Color: ");
-//    Serial.println(rgbColor);
-    #endif 
-
     // Write to the LEDs sequentially:
     ledStrip_1.setPixelColor(i, rgbColor);
     ledStrip_1.show();
@@ -1022,32 +961,14 @@ void loop() {
   // Repeat for the TVOC reading:
   // Get the 'top' RGB color for the last LED
   hueTopColor = getTopHueColor(aqi_tvoc);
-  #ifdef DEBUG
-  //Serial.print("Hue Top Color (TVOC): ");
-  //Serial.println(hueTopColor);
-  #endif 
-
   // Calculate the steps between the 'top' color and the base hue
   colorInterp = (hueValue / (LED_STRIP_COUNT - 1));
-  #ifdef DEBUG
-//  Serial.print("Color Interp: ");
-//  Serial.println(colorInterp);
-  #endif
-
-  // Yellow could do with some work...?
 
   for(int i = 0; i < (aqi_tvoc+1); i++)
   {
     // Get the current color values
     uint16_t currentLEDHue = hueValue - (colorInterp * i);
     uint32_t rgbColor = ledStrip_2.gamma32(ledStrip_2.ColorHSV(currentLEDHue));
-    #ifdef DEBUG
-//    Serial.print("Current LED hue: ");
-//    Serial.println(currentLEDHue);
-    
-//    Serial.print("RGB Color: ");
-//    Serial.println(rgbColor);
-    #endif 
 
     // Write to the LEDs sequentially:
     ledStrip_2.setPixelColor(i, rgbColor);
@@ -1061,8 +982,8 @@ void loop() {
     ledStrip_2.fill(0, (aqi_tvoc), (ledStrip_2.numPixels() - (aqi_tvoc)));
   }  
 
-  lcd.clear();
-
+   lcd.clear();
+   if(repeat_reading < 5 || repeat_reading > 10 ) {
    lcd.setCursor(0, 0);
    lcd.print("tVOC: ");
    lcd.print(tvocValue);
@@ -1070,20 +991,41 @@ void loop() {
    lcd.setCursor(0,1);
    lcd.print("CO2eq: ");
    lcd.print(eCO2Value);
+
+   repeat_reading++;
+    
+   } else if(repeat_reading >= 5 && repeat_reading < 10){
+  
+   lcd.setCursor(0, 0);
+   lcd.print("PM1: ");
+   lcd.print(pmReadings.pm1_0_cf1);
    
-//   if(delay_time != 0)  {
-//    delay(delay_time); 
+   lcd.setCursor(0,1);
+   lcd.print("PM2.5: ");
+   lcd.print(pmReadings.pm2_5_cf1);
+   repeat_reading++;
+   
+   } else {
+    repeat_reading = 0;
+   lcd.setCursor(0, 0);
+   lcd.print("tVOC: ");
+   lcd.print(tvocValue);
+   
+   lcd.setCursor(0,1);
+   lcd.print("CO2eq: ");
+   lcd.print(eCO2Value);
+   }
 
+  // PRINT SEND SERIAL COMMANDS OVER TO RASPBERRY PI
 
-      Serial.print("_ARDUINO_WRITE_ ");
+   Serial.print("_ARDUINO_WRITE_ ");
    Serial.print("tVOC: " );
    Serial.print(tvocValue);
    Serial.print(" ");
 
    Serial.print("CO2eq: ");
    Serial.print(eCO2Value);
-    Serial.print(" ");
-//   Serial.println("ppm");
+   Serial.print(" ");
 
    Serial.print("PM1.0CF: ");
    Serial.print(pmReadings.pm1_0_cf1);
@@ -1109,11 +1051,7 @@ void loop() {
    Serial.print("PM10AE: ");
    Serial.println(pmReadings.p10_a3);
    Serial.println();
-  
-//   }
-   
  
-   
   delay(500);
 
 }

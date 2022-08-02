@@ -1,7 +1,7 @@
- /* Copyright (c) Dyson Technology Ltd 2019. All rights reserved. 
- *  Software for the James Dyson Foundation Air Quality Monitoring Kit
- *  A.T. Luisi, 11/2019
- *  Diagnostic Software and Manufacturing Test
+ /* Air Pollution Arduino Code
+ *  Written by Meghna Gite, Yuhong Zhao, Declan Lowney and Benoni Vainqueur  
+ *  Sensor and LED integrations obtained from software for the James Dyson
+ *  Foundation Air Quality Monitoring Kit A.T. Luisi, 11/2019
  */
 
 // Arduino Level Includes
@@ -184,17 +184,16 @@ void initSGP30()
 
 
 void setup() {
-  // put your setup code here, to run once:
   // Output to the serial terminal
   Serial.begin(115200);
   Serial.setTimeout(1);
-//  delay(1000);
+
    String test ;
   while(Serial.available()){
-//    
+  
     }
     delay(1000);
-   test = Serial.readString();
+   serial_no = Serial.readString();
   
   
   lcd.begin(16, 2);
@@ -205,7 +204,7 @@ void setup() {
 //   lcd.print(69);
    
    lcd.setCursor(0,1);
-   lcd.print(test);
+   lcd.print(serial_no);
 
   // Init the watchdog timer for a 4s timeout
   //wdt_enable(WDTO_4S);
